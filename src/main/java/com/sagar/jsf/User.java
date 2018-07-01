@@ -1,15 +1,21 @@
 package com.sagar.jsf;
-
+import com.sagar.hibernate.*;
+import com.sagar.service.*;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.sql.ResultSet;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import javax.faces.bean.ManagedBean;
 import javax.faces.bean.RequestScoped;
 import javax.faces.context.FacesContext;
+
+import org.hibernate.Criteria;
+import org.hibernate.Session;
+import org.hibernate.Transaction;
 @ManagedBean
 @RequestScoped
 public class User{
@@ -19,10 +25,10 @@ public class User{
     String password;
     String gender;
     String address;
-    ArrayList usersList ;
+    List usersList ;
     private Map<String,Object> sessionMap = FacesContext.getCurrentInstance().getExternalContext().getSessionMap();
     Connection connection;
-    
+    UserService userservice=new UserServiceImpl();
     public int getId() {
         return id;
     }
@@ -70,44 +76,31 @@ public class User{
         return connection;
     }
     // Used to fetch all records
-    public ArrayList usersList(){
-        try{
-            usersList = new ArrayList();
-            connection = getConnection();
-            Statement stmt=getConnection().createStatement();  
-            ResultSet rs=stmt.executeQuery("select * from users");  
-            while(rs.next()){
-                User user = new User();
-                user.setId(rs.getInt("id"));
-                user.setName(rs.getString("name"));
-                user.setEmail(rs.getString("email"));
-                user.setPassword(rs.getString("password"));
-                user.setGender(rs.getString("gender"));
-                user.setAddress(rs.getString("address"));
-                usersList.add(user);
-            }
-            connection.close();        
-        }catch(Exception e){
-            System.out.println(e);
-        }
-        return usersList;
+    public List usersList()
+    {
+       
+                usersList = new ArrayList();
+                Session session=HibernateUtil.getSession();
+                Transaction t=session.getTransaction();
+                Criteria criteria=session.createCriteria(UserHibernate.class);
+                usersList= criteria.list();
+                return usersList;
     }
     // Used to save user record
-    public String save(){
+    public String save(User user){
         int result = 0;
-        try{
-            connection = getConnection();
-            PreparedStatement stmt = connection.prepareStatement("insert into users(name,email,password,gender,address) values(?,?,?,?,?)");
-            stmt.setString(1, name);
-            stmt.setString(2, email);
-            stmt.setString(3, password);
-            stmt.setString(4, gender);
-            stmt.setString(5, address);
-            result = stmt.executeUpdate();
-            connection.close();
-        }catch(Exception e){
-            System.out.println(e);
-        }
+       result=userservice.add(user);
+       /* UserHibernate uh=new UserHibernate();
+        uh.setName(user.getName());
+        uh.setEmail(user.getEmail());
+        uh.setPassword(user.getPassword());
+        uh.setGender(user.getGender());
+        uh.setAddress(user.getAddress());
+        
+        Session session=HibernateUtil.getSession();
+        Transaction t=session.beginTransaction();
+        result =(Integer)session.save(uh);
+        t.commit();*/
         if(result !=0)
             return "index.xhtml?faces-redirect=true";
         else return "create.xhtml?faces-redirect=true";
@@ -157,13 +150,22 @@ public class User{
     }
     // Used to delete user record
     public void delete(int id){
-        try{
+       /* try{
             connection = getConnection();  
             PreparedStatement stmt = connection.prepareStatement("delete from users where id = "+id);  
             stmt.executeUpdate();  
         }catch(Exception e){
             System.out.println(e);
-        }
+        }*/
+    	UserHibernate uh=new UserHibernate();
+    	System.out.println(id);
+    	uh.setId(id);
+    	Session session=HibernateUtil.getSession();
+    	Transaction t=session.beginTransaction();
+    	session.delete(uh);
+    	t.commit();
+    	session.close();
+    	
     }
     // Used to set user gender
     public String getGenderName(char gender){
